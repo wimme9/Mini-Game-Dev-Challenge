@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake</title>
+  <link rel="stylesheet" href="snake.css">
+</head>
+<body>
+
+<div id="wrapper">
+  <div id="sidebar">
+    <div class="panel">
+      <div class="panel-label">Score</div>
+      <div class="panel-value" id="score-display">0</div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">Best</div>
+      <div class="panel-value" id="best-display" style="color: var(--muted);">0</div>
+    </div>
+    <div class="panel">
+      <div class="panel-label">Level</div>
+      <div class="panel-value" id="level-display">1</div>
+      <div id="level-bar-wrap"><div id="level-bar"></div></div>
+    </div>
+    <div class="panel legend">
+      <div class="panel-label" style="margin-bottom:6px">Items</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#fc9218"></div>ความเร็ว</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#433de6"></div>x2 คะแนน</div>
+      <div class="leg-row"><div class="leg-dot" style="background:#f645ff"></div>ย่อตัว</div>
+    </div>
+  </div>
+
+  <div id="game-area">
+    <div id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div id="effect-msg"></div>
+      <div id="overlay">
+        <div id="overlay-title">🐍 Snake</div>
+        <div id="overlay-sub">กินผลไม้ให้ได้มากที่สุด</div>
+        <button id="start-btn">เริ่มเกม</button>
+      </div>
+    </div>
+    <div id="hint">
+      <span>↑↓←→ / WASD เลี้ยว</span>
+      <span>SPACE หยุด</span>
+    </div>
+    <div id="mobile-pad">
+      <div class="pad-empty"></div>
+      <button class="pad-btn" id="pad-up">↑</button>
+      <div class="pad-empty"></div>
+      <button class="pad-btn" id="pad-left">←</button>
+      <div class="pad-empty"></div>
+      <button class="pad-btn" id="pad-right">→</button>
+      <div class="pad-empty"></div>
+      <button class="pad-btn" id="pad-down">↓</button>
+      <div class="pad-empty"></div>
+    </div>
+  </div>
+</div>
+
+<script src="snake.js"></script>
+</body>
+</html>

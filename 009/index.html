@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Gravity - Web Game</title>
+    <style>
+        /* ==========================================
+           🎨 ส่วนตกแต่งความสวยงาม (CSS)
+           ========================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #050510;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* ป้องกันการเลื่อนหน้าจอเวลาสลับแรงโน้มถ่วง */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(to bottom, #0a0a20 0%, #050510 50%, #0a0a20 100%);
+            border-top: 5px solid #ff007f;
+            border-bottom: 5px solid #ff007f;
+            box-shadow: 0 0 20px #ff007f88;
+            max-width: 100%;
+        }
+
+        .instruction {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 14px;
+            color: #00ffff;
+            text-shadow: 0 0 5px #00ffff;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div class="instruction">
+        [กด Spacebar หรือ คลิกเมาส์] เพื่อเริ่มเกมและสลับแรงโน้มถ่วง
+    </div>
+    
+    <script src="game.js"></script>
+
+</body>
+</html>

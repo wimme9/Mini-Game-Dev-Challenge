@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Chain - Puzzle Game</title>
+    <style>
+        
+        body {
+            background-color: #0b0f19;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        h1 {
+            color: #00f2fe;
+            text-shadow: 0 0 15px rgba(0, 242, 254, 0.8);
+            margin-bottom: 5px;
+            font-size: 2.2rem;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            color: #aaa;
+            margin: 0 0 20px 0;
+            font-size: 1.1rem;
+        }
+
+        .status-container {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        #timer {
+            color: #ff4757;
+            text-shadow: 0 0 8px rgba(255, 71, 87, 0.6);
+        }
+
+        #score {
+            color: #2ed573;
+            text-shadow: 0 0 8px rgba(46, 213, 115, 0.6);
+        }
+
+        /* กระดานเกม 4x4 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 75px);
+            grid-template-rows: repeat(4, 75px);
+            gap: 8px;
+            background-color: #121826;
+            padding: 14px;
+            border-radius: 12px;
+            border: 2px solid #00f2fe;
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.4);
+            touch-action: none;
+        }
+
+        .cell {
+            background-color: #1c2333;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+
+        .dot {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            pointer-events: none; 
+        }
+
+        .red { color: #ff4757; background-color: #ff4757; box-shadow: 0 0 15px #ff4757; }
+        .blue { color: #1e90ff; background-color: #1e90ff; box-shadow: 0 0 15px #1e90ff; }
+        .green { color: #2ed573; background-color: #2ed573; box-shadow: 0 0 15px #2ed573; }
+
+        .bg-red { background-color: rgba(255, 71, 87, 0.5) !important; }
+        .bg-blue { background-color: rgba(30, 144, 255, 0.5) !important; }
+        .bg-green { background-color: rgba(46, 213, 115, 0.5) !important; }
+
+        .btn {
+            margin-top: 25px;
+            padding: 12px 35px;
+            background: linear-gradient(45deg, #00f2fe, #4facfe);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4);
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 242, 254, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(11, 15, 25, 0.95);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .overlay h2 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>COLOR CHAIN</h1>
+    <p class="subtitle">ลากเส้นเชื่อมสีเดียวกันให้ครบทุกช่อง!</p>
+
+    <div class="status-container">
+        <div>เวลาเหลือ: <span id="timer">30</span> วินาที</div>
+        <div>คะแนน: <span id="score">0</span></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <button class="btn" onclick="resetGame()">เริ่มใหม่</button>
+
+    <div class="overlay" id="overlay">
+        <h2 id="overlay-title">ชนะแล้ว!</h2>
+        <p id="overlay-desc" style="font-size: 1.2rem; color: #ccc; margin-bottom: 20px;"></p>
+        <button class="btn" onclick="resetGame()">เล่นอีกครั้ง</button>
+    </div>
+
+    <script>
+        const dotData = [
+            { r: 0, c: 0, color: 'red' },   { r: 3, c: 3, color: 'red' },
+            { r: 0, c: 1, color: 'blue' },  { r: 0, c: 2, color: 'blue' },
+            { r: 0, c: 3, color: 'green' }, { r: 2, c: 3, color: 'green' }
+        ];
+
+        let gridState = Array(4).fill().map(() => Array(4).fill(null));
+        let isDragging = false;
+        let currentColor = null;
+        let currentPath = [];
+        let timeLeft = 30;
+        let timerInterval = null;
+        let gameActive = true;
+        let completedColors = new Set();
+
+        const gridElement = document.getElementById('grid');
+
+        function createGrid() {
+            gridElement.innerHTML = '';
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+
+                    const dot = dotData.find(d => d.r === r && d.c === c);
+                    if (dot) {
+                        const dotDiv = document.createElement('div');
+                        dotDiv.classList.add('dot', dot.color);
+                        cell.appendChild(dotDiv);
+                        cell.dataset.dotColor = dot.color;
+                    }
+
+                    cell.addEventListener('mousedown', (e) => startDrag(r, c, cell));
+                    cell.addEventListener('mouseenter', () => continueDrag(r, c, cell));
+
+                    cell.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        startDrag(r, c, cell);
+                    });
+
+                    gridElement.appendChild(cell);
+                }
+            }
+
+            gridElement.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                let element = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                if (element && element.classList.contains('dot')) {
+                    element = element.parentElement;
+                }
+                
+                if (element && element.classList.contains('cell')) {
+                    const r = parseInt(element.dataset.row);
+                    const c = parseInt(element.dataset.col);
+                    continueDrag(r, c, element);
+                }
+            });
+
+            window.addEventListener('mouseup', endDrag);
+            window.addEventListener('touchend', endDrag);
+        }
+
+        function startDrag(r, c, cell) {
+            if (!gameActive) return;
+            const dotColor = cell.dataset.dotColor;
+            
+            if (dotColor) {
+                isDragging = true;
+                currentColor = dotColor;
+                currentPath = [{ r, c }];
+                clearColorPath(currentColor); 
+                cell.classList.add(`bg-${currentColor}`);
+                gridState[r][centerGridTrack(r,c)] = currentColor; 
+                gridState[r][c] = currentColor;
+            }
+        }
+
+        function continueDrag(r, c, cell) {
+            if (!isDragging) return;
+            const lastCell = currentPath[currentPath.length - 1];
+            
+            const isNeighbor = (Math.abs(r - lastCell.r) + Math.abs(c - lastCell.c)) === 1;
+            if (!isNeighbor) return;
+
+            if (currentPath.length > 1 && currentPath[currentPath.length - 2].r === r && currentPath[currentPath.length - 2].c === c) {
+                const popped = currentPath.pop();
+                const poppedCell = document.querySelector(`[data-row="${popped.r}"][data-col="${popped.c}"]`);
+                if (poppedCell.dataset.dotColor !== currentColor) {
+                    poppedCell.classList.remove(`bg-${currentColor}`);
+                    gridState[popped.r][popped.c] = null;
+                }
+                updateScore();
+                return;
+            }
+
+            if (!gridState[r][c]) {
+                if (cell.dataset.dotColor && cell.dataset.dotColor !== currentColor) return;
+
+                currentPath.push({ r, c });
+                cell.classList.add(`bg-${currentColor}`);
+                gridState[r][c] = currentColor;
+
+                if (cell.dataset.dotColor === currentColor) {
+                    completedColors.add(currentColor);
+                    endDrag();
+                    checkWinCondition();
+                }
+            }
+            updateScore();
+        }
+
+        function centerGridTrack(r,c){ return c; }
+
+        function endDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const lastCell = currentPath[currentPath.length - 1];
+            const lastCellElement = document.querySelector(`[data-row="${lastCell.r}"][data-col="${lastCell.c}"]`);
+            
+            if (!lastCellElement.dataset.dotColor || lastCellElement.dataset.dotColor !== currentColor || currentPath.length === 1) {
+                clearColorPath(currentColor);
+            }
+            updateScore();
+        }
+
+        function clearColorPath(color) {
+            completedColors.delete(color);
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    if (gridState[r][c] === color) {
+                        gridState[r][c] = null;
+                        const cell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+                        cell.classList.remove(`bg-${color}`);
+                    }
+                }
+            }
+        }
+
+        function updateScore() {
+            let filledCells = 0;
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    if (gridState[r][c]) filledCells++;
+                }
+            }
+            document.getElementById('score').innerText = filledCells * 10;
+        }
+
+        function checkWinCondition() {
+            let totalFilled = 0;
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    if (gridState[r][c]) totalFilled++;
+                }
+            }
+
+            if (completedColors.size === 3 && totalFilled === 16) {
+                endGame(true);
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        function endGame(isWin) {
+            gameActive = false;
+            clearInterval(timerInterval);
+            const overlay = document.getElementById('overlay');
+            const title = document.getElementById('overlay-title');
+            const desc = document.getElementById('overlay-desc');
+            
+            overlay.style.display = 'flex';
+            if (isWin) {
+                title.innerText = 'YOU WIN! 🎉';
+                title.style.color = '#2ed573';
+                title.style.textShadow = '0 0 15px #2ed573';
+                desc.innerText = `ยอดเยี่ยมมาก! คุณไขปริศนา Color Chain และเติมเต็มกระดานได้ครบถ้วน!`;
+            } else {
+                title.innerText = 'GAME OVER 💀';
+                title.style.color = '#ff4757';
+                title.style.textShadow = '0 0 15px #ff4757';
+                desc.innerText = 'หมดเวลาแล้ว! ลองใหม่อีกครั้งเพื่อทำคะแนนให้สมบูรณ์แบบ';
+            }
+        }
+
+        function resetGame() {
+            gridState = Array(4).fill().map(() => Array(4).fill(null));
+            completedColors.clear();
+            timeLeft = 30;
+            gameActive = true;
+            document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('score').innerText = '0';
+            document.getElementById('overlay').style.display = 'none';
+            createGrid();
+            startTimer();
+        }
+
+        // เปิดใช้งานเกม
+        createGrid();
+        startTimer();
+    </script>
+</body>
+</html>

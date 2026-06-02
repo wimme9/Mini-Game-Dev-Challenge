@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mosquito Slap! - เกมตบยุงร้าย</title>
+    <style>
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #2c3e50, #0f2027);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .ui-panel {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .score-box { color: #4cd137; }
+        .time-box { color: #e84118; }
+
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 450px;
+
+            background-image: url('background.png'); 
+            background-size: cover;
+            background-position: center;
+            
+            border: 4px solid #fbc531;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            /* เปลี่ยน cursor ตัวชี้ให้กลายเป็นรูปฝ่ามือเตรียบตบ 🖐️ */
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><text y="22" font-size="22">🖐️</text></svg>'), auto;
+        }
+
+        /* ส่วนควบคุมและตกแต่งรูปภาพยุง mosquito.png ของคุณ */
+        #mosquito {
+            position: absolute;
+            width: 60px; 
+            height: auto;
+            cursor: pointer;
+            display: none;
+            user-select: none;
+            -webkit-user-drag: none; 
+            filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.6)); 
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 32, 39, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            z-index: 10;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #fbc531;
+            text-shadow: 0 0 10px rgba(251, 197, 49, 0.5);
+        }
+
+        button {
+            background: #fbc531;
+            color: #0f2027;
+            border: none;
+            padding: 12px 35px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #fff;
+            box-shadow: 0 0 15px #fbc531;
+            transform: scale(1.05);
+        }
+
+        .floating-text {
+            position: absolute;
+            font-weight: bold;
+            font-size: 1.6rem;
+            animation: floatUp 0.5s ease-out forwards;
+            pointer-events: none;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.9);
+            z-index: 5;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-60px) scale(1.2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="slap-sound" preload="auto">
+        <source src="slap.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="bg-music" loop preload="auto">
+        <source src="mosquito -sound-game.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="game-container">
+        <div class="ui-panel">
+            <div class="score-box">💥 ตบได้: <span id="score">0</span> / 300 แต้ม</div>
+            <div class="time-box">⏳ เวลาเหลือ: <span id="time">30</span> วิ</div>
+        </div>
+
+        <div id="game-area">
+            <img id="mosquito" src="mosquito.png" alt="Mosquito">
+
+            <div id="start-screen" class="screen">
+                <h2>🦟 Mosquito Slap! 💥</h2>
+                <p>คืนนี้ไม่ได้นอนแน่! เจ้ายุงร้ายบุกห้องนอนของคุณแล้ว</p>
+                <p><b>กติกา:</b> รีบตบยุงที่บินโผล่ขึ้นมาให้ไวที่สุด</p>
+                <p>สะสมให้ครบ <b style="color:#4cd137;">300 คะแนน</b> ภายใน <b style="color:#e84118;">30 วินาที</b></p>
+                <button onclick="startGame()">เริ่มตบยุง!</button>
+            </div>
+
+            <div id="game-over-screen" class="screen" style="display: none;">
+                <h2 id="game-result-title">จบเกม!</h2>
+                <p id="game-result-detail">คุณจัดการยุงไปได้: 0 ตัว</p>
+                <button onclick="startGame()">ล้างตาอีกรอบ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- JavaScript ควบคุมระบบเกมทั้งหมด --- */
+        let score = 0;
+        let timeLeft = 30; 
+        let gameInterval;
+        let mosquitoTimeout;
+        // จุดแก้ไขที่ 3: เปลี่ยนตัวแปรเป้าหมายคะแนนสูงสุดเป็น 300 คะแนน เพื่อใช้คำนวณชัยชนะ
+        const targetScore = 300;
+
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+        const mosquito = document.getElementById('mosquito');
+        const gameArea = document.getElementById('game-area');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const resultTitle = document.getElementById('game-result-title');
+        const resultDetail = document.getElementById('game-result-detail');
+
+        const slapSound = document.getElementById('slap-sound');
+        const bgMusic = document.getElementById('bg-music');
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30; 
+            scoreDisplay.textContent = score;
+            timeDisplay.textContent = timeLeft;
+            
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            mosquito.style.display = 'block';
+
+            // จัดการระบบเสียงเพลงประกอบเกมหลังผู้เล่นเริ่มกดปุ่มป้องกัน Browser บล็อกเสียง
+            bgMusic.muted = false; 
+            bgMusic.volume = 0.3; // ตั้งเสียงเพลงแบ็คกราวด์ไม่ให้ดังกลบเสียงตบ
+            bgMusic.currentTime = 0;
+            
+            let playPromise = bgMusic.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("บราวเซอร์รอการตอบสนองเพิ่มเติมเพื่อเล่นเสียง:", error);
+                });
+            }
+
+            gameInterval = setInterval(updateTime, 1000);
+            moveMosquito();
+        }
+
+        function updateTime() {
+            timeLeft--;
+            timeDisplay.textContent = timeLeft;
+
+            if (timeLeft <= 0) {
+                endGame(false);
+            }
+        }
+
+        function moveMosquito() {
+            if (timeLeft <= 0 || score >= targetScore) return;
+
+            const randomSize = Math.floor(Math.random() * (85 - 40 + 1)) + 40;
+            mosquito.style.width = randomSize + 'px';
+
+            const maxX = gameArea.clientWidth - randomSize;
+            const maxY = gameArea.clientHeight - randomSize;
+
+            const randomX = Math.floor(Math.random() * maxX);
+            const randomY = Math.floor(Math.random() * maxY);
+
+            mosquito.style.left = randomX + 'px';
+            mosquito.style.top = randomY + 'px';
+
+            clearTimeout(mosquitoTimeout);
+            mosquitoTimeout = setTimeout(moveMosquito, 750); // ยุงจะขยับหนีทุกๆ 0.75 วินาที
+        }
+
+        mosquito.addEventListener('click', (e) => {
+            // เล่นเสียงเอฟเฟกต์ตบยุงทันที (รีเซ็ตเวลาเป็น 0 เพื่อให้กดรัวๆ เสียงก็ยังดังต่อเนื่องได้)
+            slapSound.currentTime = 0; 
+            slapSound.volume = 0.9;
+            slapSound.play();
+
+            const randomChance = Math.random();
+            let points = 10;
+            let text = "แปะ! ยุงธรรมดา +10";
+            let color = "#fbc531";
+
+            if (randomChance > 0.85) {
+                points = 50;
+                text = "💥 เพียะ!! ยุงยักษ์ก้นปล่อง +50";
+                color = "#e84118";
+            } else if (randomChance > 0.55) {
+                points = 30;
+                text = "⚡ แป๊บ!! ยุงลายบ้าน +30";
+                color = "#00a8ff";
+            }
+
+            score += points;
+            scoreDisplay.textContent = score;
+
+            showHitEffect(text, e.clientX, e.clientY, color);
+
+            if (score >= targetScore) {
+                endGame(true);
+            } else {
+                moveMosquito(); // ตบโดนปุ๊บ สุ่มย้ายตำแหน่งหนีทันที
+            }
+        });
+
+        function showHitEffect(text, x, y, color) {
+            const effect = document.createElement('div');
+            effect.className = 'floating-text';
+            effect.textContent = text;
+            
+            const rect = gameArea.getBoundingClientRect();
+            effect.style.left = (x - rect.left - 40) + 'px';
+            effect.style.top = (y - rect.top - 20) + 'px';
+            effect.style.color = color;
+
+            gameArea.appendChild(effect);
+            setTimeout(() => effect.remove(), 500);
+        }
+
+        function endGame(isWin) {
+            clearInterval(gameInterval);
+            clearTimeout(mosquitoTimeout);
+            mosquito.style.display = 'none';
+            gameOverScreen.style.display = 'flex';
+
+            bgMusic.pause();
+
+            if (isWin) {
+                resultTitle.textContent = "🏆 คืนนี้รอดแล้ว! 🏆";
+                resultTitle.style.color = "#4cd137";
+                resultDetail.textContent = `ยอดเยี่ยม! คุณจัดการยุงราบคาบ ทำได้ถึง ${score} คะแนน ห้องนอนปลอดภัยแล้ว!`;
+            } else {
+                resultTitle.textContent = "🦟 โดนยุงหาม! 💀";
+                resultTitle.style.color = "#e84118";
+                resultDetail.textContent = `หมดเวลา! คุณตบยุงได้เพียง ${score} คะแนน (คันคะเยอไปทั้งตัว)`;
+            }
+        }
+    </script>
+</body>
+</html>
