@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Garbage Collector</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #0d1117;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            color: #00ffcc;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ffcc;
+        }
+        #game-container {
+            position: relative;
+            border: 4px solid #00ffcc;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+            border-radius: 8px;
+        }
+        canvas {
+            background: linear-gradient(to bottom, #141923, #1f293d);
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 1px 1px 3px black;
+        }
+        .hud-item {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #30363d;
+        }
+        #score-display { color: #00ffcc; }
+        #timer-display { color: #ffcc00; }
+        #lives-display { color: #ff4d4d; }
+        
+        /* Screen Overlays */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 17, 23, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: 4px;
+        }
+        .screen h2 {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+        .screen p {
+            font-size: 16px;
+            margin-bottom: 25px;
+            text-align: center;
+            line-height: 1.6;
+            color: #8b949e;
+        }
+        .btn {
+            background-color: #00ffcc;
+            color: #0d1117;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+        }
+        .btn:hover {
+            transform: scale(1.05);
+            background-color: #ffffff;
+            box-shadow: 0 0 20px #ffffff;
+        }
+        .hide { display: none !important; }
+        #victory-screen h2 { color: #00ffcc; text-shadow: 0 0 15px #00ffcc;}
+        #gameover-screen h2 { color: #ff4d4d; text-shadow: 0 0 15px #ff4d4d;}
+    </style>
+</head>
+<body>
+
+    <h1>Cyber Garbage Collector</h1>
+    
+    <div id="game-container">
+        <div id="ui-layer">
+            <div class="hud-item" id="score-display">คะแนน: 0 / 500</div>
+            <div class="hud-item" id="timer-display">เวลา: 60s</div>
+            <div class="hud-item" id="lives-display">ชีวิต: ❤️❤️❤️</div>
+        </div>
+
+        <div id="start-screen" class="screen">
+            <h2>START MISSION</h2>
+            <p>ใช้ปุ่มลูกศร ซ้าย-ขวา (◀ ▶) เพื่อควบคุมยานถังขยะ<br>
+            🟢 เก็บขยะรีไซเคิลไซเบอร์เพื่อรับ +10 คะแนน<br>
+            🔴 หลบระเบิดไวรัสสีแดง! ถ้าชนจะเสียหัวใจและ -20 คะแนน<br>
+            ภารกิจ: ทำคะแนนให้ถึง <b>500 คะแนน</b> ภายใน <b>60 วินาที</b></p>
+            <button class="btn" onclick="startGame()">เริ่มเกม</button>
+        </div>
+
+        <div id="victory-screen" class="screen hide">
+            <h2>VICTORY! 🎉</h2>
+            <p>คุณกู้ระบบนิเวศไซเบอร์ได้สำเร็จ!<br>ทำคะแนนทะลุเป้าหมายสำเร็จ</p>
+            <button class="btn" onclick="resetGame()">เล่นอีกครั้ง</button>
+        </div>
+
+        <div id="gameover-screen" class="screen hide">
+            <h2>GAME OVER 👾</h2>
+            <p>ระบบถูกทำลาย หรือเวลาหมดลงก่อนทำภารกิจสำเร็จ</p>
+            <button class="btn" onclick="resetGame()">ลองใหม่อีกครั้ง</button>
+        </div>
+
+        <canvas id="gameCanvas" width="500" height="600"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Screens
+        const startScreen = document.getElementById('start-screen');
+        const victoryScreen = document.getElementById('victory-screen');
+        const gameoverScreen = document.getElementById('gameover-screen');
+        
+        // HUD Elements
+        const scoreDisplay = document.getElementById('score-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const livesDisplay = document.getElementById('lives-display');
+
+        // Game Variables
+        let gameActive = false;
+        let score = 0;
+        let lives = 3;
+        let timeLeft = 60;
+        let gameInterval;
+        let timerInterval;
+        let items = [];
+        let spawnTimer = 0;
+
+        // Player Object
+        const player = {
+            x: canvas.width / 2 - 40,
+            y: canvas.height - 50,
+            width: 80,
+            height: 20,
+            speed: 8,
+            dx: 0
+        };
+
+        // Keyboard Controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'Left') player.dx = -player.speed;
+            if (e.key === 'ArrowRight' || e.key === 'Right') player.dx = player.speed;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (['ArrowLeft', 'Left', 'ArrowRight', 'Right'].includes(e.key)) {
+                player.dx = 0;
+            }
+        });
+
+        // Functions
+        function startGame() {
+            startScreen.classList.add('hide');
+            victoryScreen.classList.add('hide');
+            gameoverScreen.classList.add('hide');
+            gameActive = true;
+            
+            // Loop & Timer
+            gameInterval = requestAnimationFrame(update);
+            timerInterval = setInterval(() => {
+                if (gameActive) {
+                    timeLeft--;
+                    timerDisplay.innerText = `เวลา: ${timeLeft}s`;
+                    if (timeLeft <= 0) endGame(false);
+                }
+            }, 1000);
+        }
+
+        function createItem() {
+            const types = ['garbage', 'garbage', 'bomb']; // โอกาสเจอขยะ 66% ระเบิด 33%
+            const type = types[Math.floor(Math.random() * types.length)];
+            items.push({
+                x: Math.random() * (canvas.width - 20) + 10,
+                y: -20,
+                radius: 12,
+                type: type,
+                speed: Math.random() * 3 + 2 + (score / 150) // ยิ่งคะแนนเยอะ ของยิ่งตกไวขึ้น
+            });
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            // ล้างหน้าจอ
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // เคลื่อนที่ผู้เล่น
+            player.x += player.dx;
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+            // วาดผู้เล่น (ยานตะกร้าไฮเทค)
+            ctx.fillStyle = '#00ffcc';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00ffcc';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.shadowBlur = 0; // reset shadow
+
+            // จัดการวัตถุที่หล่นลงมา
+            spawnTimer++;
+            if (spawnTimer % 40 === 0) { // เกิดทุกๆ 40 เฟรม
+                createItem();
+            }
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                let item = items[i];
+                item.y += item.speed;
+
+                // วาดวัตถุ
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                if (item.type === 'garbage') {
+                    ctx.fillStyle = '#39ff14'; // ขยะสีเขียวนีออน
+                } else {
+                    ctx.fillStyle = '#ff3333'; // ระเบิดสีแดง
+                }
+                ctx.fill();
+                ctx.closePath();
+
+                // ตรวจสอบการชน (Collision Detection กับขอบบนของยาน)
+                if (item.y + item.radius >= player.y && 
+                    item.x >= player.x && 
+                    item.x <= player.x + player.width && 
+                    item.y - item.radius <= player.y + player.height) {
+                    
+                    // เอฟเฟกต์การชนตามประเภท
+                    if (item.type === 'garbage') {
+                        score += 10;
+                    } else {
+                        score = Math.max(0, score - 20);
+                        lives--;
+                        updateLivesHUD();
+                    }
+                    
+                    scoreDisplay.innerText = `คะแนน: ${score} / 500`;
+                    items.splice(i, 1);
+
+                    // เงื่อนไขชนะเกม
+                    if (score >= 500) {
+                        endGame(true);
+                    }
+                    // เงื่อนไขแพ้เพราะชีวิตหมด
+                    if (lives <= 0) {
+                        endGame(false);
+                    }
+                    continue;
+                }
+
+                // หลุดขอบจอด้านล่าง ให้ลบออก
+                if (item.y - item.radius > canvas.height) {
+                    items.splice(i, 1);
+                }
+            }
+
+            if (gameActive) {
+                requestAnimationFrame(update);
+            }
+        }
+
+        function updateLivesHUD() {
+            let heartString = 'ชีวิต: ';
+            for (let i = 0; i < 3; i++) {
+                heartString += i < lives ? '❤️' : '🖤';
+            }
+            livesDisplay.innerText = heartString;
+        }
+
+        function endGame(isVictory) {
+            gameActive = false;
+            clearInterval(timerInterval);
+            cancelAnimationFrame(gameInterval);
+
+            if (isVictory) {
+                victoryScreen.classList.remove('hide');
+            } else {
+                gameoverScreen.classList.remove('hide');
+            }
+        }
+
+        function resetGame() {
+            score = 0;
+            lives = 3;
+            timeLeft = 60;
+            items = [];
+            spawnTimer = 0;
+            player.x = canvas.width / 2 - 40;
+            player.dx = 0;
+            
+            scoreDisplay.innerText = `คะแนน: 0 / 500`;
+            timerDisplay.innerText = `เวลา: 60s`;
+            updateLivesHUD();
+            
+            startGame();
+        }
+    </script>
+</body>
+</html>
