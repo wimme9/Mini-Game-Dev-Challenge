@@ -1,0 +1,294 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Treasure Dash: Escape Island</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;
+}
+
+body{
+    background:linear-gradient(135deg,#1e3c72,#2a5298);
+    color:white;
+    text-align:center;
+}
+
+h1{
+    margin-top:15px;
+}
+
+#info{
+    display:flex;
+    justify-content:center;
+    gap:30px;
+    margin:15px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+#game{
+    width:600px;
+    height:600px;
+    margin:auto;
+    display:grid;
+    grid-template-columns:repeat(12,1fr);
+    grid-template-rows:repeat(12,1fr);
+    border:5px solid gold;
+    background:#3ca55c;
+}
+
+.cell{
+    border:1px solid rgba(255,255,255,0.1);
+}
+
+.player{
+    background:#3498db;
+}
+
+.treasure{
+    background:gold;
+}
+
+.enemy{
+    background:#e74c3c;
+}
+
+.exit{
+    background:#9b59b6;
+}
+
+#message{
+    margin-top:20px;
+    font-size:28px;
+    font-weight:bold;
+}
+
+#instructions{
+    margin-top:15px;
+    line-height:1.8;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🏝️ Treasure Dash: Escape Island 💰</h1>
+
+<div id="info">
+    <div>คะแนน: <span id="score">0</span></div>
+    <div>สมบัติ: <span id="treasures">0</span>/5</div>
+    <div>เวลา: <span id="time">60</span></div>
+</div>
+
+<div id="game"></div>
+
+<div id="message"></div>
+
+<div id="instructions">
+    ใช้ปุ่ม ⬅️⬆️⬇️➡️ หรือ WASD เพื่อเคลื่อนที่<br>
+    เก็บสมบัติให้ครบ 5 ชิ้น แล้วไปยังประตูสีม่วงก่อนเวลาหมด
+</div>
+
+<script>
+const game = document.getElementById("game");
+
+const size = 12;
+let score = 0;
+let collected = 0;
+let timeLeft = 60;
+let gameOver = false;
+
+let player = {x:0,y:0};
+let exit = {x:11,y:11};
+
+let treasures = [
+{x:2,y:3},
+{x:7,y:1},
+{x:10,y:4},
+{x:3,y:9},
+{x:8,y:8}
+];
+
+let enemies = [
+{x:5,y:5,dx:1},
+{x:9,y:2,dx:-1}
+];
+
+function draw(){
+    game.innerHTML = "";
+
+    for(let y=0;y<size;y++){
+        for(let x=0;x<size;x++){
+
+            const cell = document.createElement("div");
+            cell.classList.add("cell");
+
+            if(player.x===x && player.y===y){
+                cell.classList.add("player");
+            }
+
+            treasures.forEach(t=>{
+                if(t.x===x && t.y===y){
+                    cell.classList.add("treasure");
+                }
+            });
+
+            enemies.forEach(e=>{
+                if(e.x===x && e.y===y){
+                    cell.classList.add("enemy");
+                }
+            });
+
+            if(exit.x===x && exit.y===y){
+                cell.classList.add("exit");
+            }
+
+            game.appendChild(cell);
+        }
+    }
+}
+
+function updateScore(){
+    document.getElementById("score").textContent = score;
+    document.getElementById("treasures").textContent = collected;
+}
+
+function showMessage(text,color){
+    const msg = document.getElementById("message");
+    msg.textContent = text;
+    msg.style.color = color;
+}
+
+function movePlayer(dx,dy){
+
+    if(gameOver) return;
+
+    let nx = player.x + dx;
+    let ny = player.y + dy;
+
+    if(nx<0 || nx>=size || ny<0 || ny>=size) return;
+
+    player.x = nx;
+    player.y = ny;
+
+    treasures = treasures.filter(t=>{
+        if(t.x===player.x && t.y===player.y){
+            score += 10;
+            collected++;
+            updateScore();
+            return false;
+        }
+        return true;
+    });
+
+    enemies.forEach(e=>{
+        if(e.x===player.x && e.y===player.y){
+            loseGame();
+        }
+    });
+
+    if(player.x===exit.x &&
+       player.y===exit.y &&
+       collected===5){
+        winGame();
+    }
+
+    draw();
+}
+
+function moveEnemies(){
+
+    if(gameOver) return;
+
+    enemies.forEach(e=>{
+
+        e.x += e.dx;
+
+        if(e.x <= 0 || e.x >= size-1){
+            e.dx *= -1;
+        }
+
+        if(e.x===player.x && e.y===player.y){
+            loseGame();
+        }
+    });
+
+    draw();
+}
+
+function winGame(){
+    gameOver = true;
+    score += timeLeft * 2;
+    updateScore();
+
+    showMessage(
+        "🎉 ชนะแล้ว! คุณหนีออกจากเกาะสำเร็จ!",
+        "#00ff88"
+    );
+}
+
+function loseGame(){
+    gameOver = true;
+
+    showMessage(
+        "💀 เกมโอเวอร์!",
+        "#ff4444"
+    );
+}
+
+document.addEventListener("keydown",(e)=>{
+
+    switch(e.key){
+        case "ArrowUp":
+        case "w":
+        case "W":
+            movePlayer(0,-1);
+            break;
+
+        case "ArrowDown":
+        case "s":
+        case "S":
+            movePlayer(0,1);
+            break;
+
+        case "ArrowLeft":
+        case "a":
+        case "A":
+            movePlayer(-1,0);
+            break;
+
+        case "ArrowRight":
+        case "d":
+        case "D":
+            movePlayer(1,0);
+            break;
+    }
+});
+
+setInterval(()=>{
+    if(gameOver) return;
+
+    timeLeft--;
+    document.getElementById("time").textContent = timeLeft;
+
+    if(timeLeft<=0){
+        loseGame();
+    }
+},1000);
+
+setInterval(moveEnemies,500);
+
+draw();
+updateScore();
+</script>
+
+</body>
+</html>
+```
